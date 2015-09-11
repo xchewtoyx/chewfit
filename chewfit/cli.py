@@ -47,6 +47,25 @@ class FitClient(object):
     def service(self):
         return build('fitness', 'v1', http=self.client())
 
+    def list_streams(self):
+        ds = self.service.users().dataSources()
+        streams = ds.list(userId='me').execute()
+        for stream in streams['dataSource']:
+            print stream['dataStreamId']
+
+    def merged_weights(self, start, stop):
+        ds = self.service().users().dataSources().datasets()
+        history = ds.get(
+            dataSourceId=(
+                'derived:com.google.weight:com.google.android.gms:merge_weight'
+                ),
+            datasetId='%d000000000-%d000000000' % (
+                start,
+                stop, ),
+            userId='me').execute()
+        data_points = history.get('point', [])
+        return data_points
+
 def run():
     parser = argparse.ArgumentParser(parents=[tools.argparser])
     parser.add_argument(
@@ -56,20 +75,10 @@ def run():
         default=7)
     day_secs = 86400
     args = parser.parse_args()
-    client = FitClient(args)
-    service = client.service()
-    ds= service.users().dataSources().datasets()
     now = time.time() - args.offset * day_secs
     then = now - args.window * day_secs
-    history = ds.get(
-        dataSourceId=(
-            'raw:com.google.weight:com.google.android.apps.fitness:user_input'
-            ),
-        datasetId='%d000000000-%d000000000' % (
-            then,
-            now, ),
-        userId='me').execute()
-    data_points = history.get('point', [])
+    client = FitClient(args)
+    data_points = client.merged_weights(then, now)
     if data_points:
         total = sum(point['value'][0]['fpVal'] for point in data_points)
         count = len(data_points)
