@@ -6,6 +6,7 @@ setup(
     install_requires=[
         'httplib2>=0.9.1',
         'google-api-python-client',
+        'six',
     ],
     entry_points={
         'console_scripts': [
